@@ -1,0 +1,113 @@
+---
+- name: Quality of Life
+  hosts: all
+  become: true
+  vars:
+    user: "{{ ansible_env['SUDO_USER'] }}"
+    user_home: "{{ ansible_env['PWD'] }}"
+    user_zshrc: "{{ user_home }}/.zshrc"
+    user_config_dir: "{{ user_home }}/.config"
+  tasks:
+    - name: Debug
+      ansible.builtin.debug:
+        var: ansible_env["SUDO_USER"],ansible_env["PWD"]
+    - name: Enable Copr
+      community.general.copr:
+        name: atim/starship
+    - name: Install all packages
+      ansible.builtin.dnf5:
+        name: git,zsh,lsd,bat,neovim,python3-neovim,starship
+        state: latest
+    - name: Customize zshrc
+      block:
+        - name: Set nvim as editor
+          ansible.builtin.lineinfile:
+            path: "{{ user_zshrc }}"
+            search_string: "export EDITOR="
+            line: 'export EDITOR="nvim"'
+        - name: Init starship
+          ansible.builtin.lineinfile:
+            path: "{{ user_zshrc }}"
+            search_string: 'eval "$(starship init zsh)"'
+            line: 'eval "$(starship init zsh)"'
+        - name: Alias cat to bat
+          ansible.builtin.lineinfile:
+            path: "{{ user_zshrc }}"
+            search_string: "alias cat="
+            line: alias cat="bat"
+        - name: Alias help to bathelp
+          ansible.builtin.lineinfile:
+            path: "{{ user_zshrc }}"
+            search_string: "alias -g -- --help="
+            line: alias -g -- --help='--help 2>&1 | bat --language=help --style=plain'
+        - name: Alias ls to lsd
+          ansible.builtin.lineinfile:
+            path: "{{ user_zshrc }}"
+            search_string: "alias ls="
+            line: alias ls="lsd"
+    - name: Configure Catpuccin
+      block:
+        - name: Create required directories
+          ansible.builtin.file:
+            state: directory
+            path: "{{ user_config_dir }}/{{ item.path }}"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: u=rwx,g=rx,o=rx
+          loop:
+            - { path: "lsd" }
+            - { path: "bat/themes" }
+        - name: Catpuccin for lsd
+          block:
+            - name: Copy theme
+              ansible.builtin.get_url:
+                url: https://raw.githubusercontent.com/catppuccin/lsd/refs/heads/main/themes/catppuccin-mocha/colors.yaml
+                dest: "{{ user_config_dir }}/lsd/colors.yaml"
+                owner: "{{ user }}"
+                group: "{{ user }}"
+                mode: u=rwx,g=rx,o=rx
+            - name: Configure color section
+              ansible.builtin.lineinfile:
+                path: "{{ user_config_dir }}/lsd/config.yaml"
+                create: true
+                search_string: "color:"
+                line: "color:"
+                owner: "{{ user }}"
+                group: "{{ user }}"
+                mode: u=rwx,g=rx,o=rx
+            - name: Configure theme
+              ansible.builtin.lineinfile:
+                path: "{{ user_config_dir }}/lsd/config.yaml"
+                search_string: "theme:"
+                line: "  theme: custom"
+        - name: Catpuccin for bat
+          block:
+            - name: Copy theme
+              notify: Build bat cache
+              ansible.builtin.get_url:
+                url: https://github.com/catppuccin/bat/raw/main/themes/Catppuccin%20Mocha.tmTheme
+                dest: "{{ user_config_dir }}/bat/themes/Catpuccin Mocha.tmTheme"
+                owner: "{{ user }}"
+                group: "{{ user }}"
+                mode: u=rwx,g=rx,o=rx
+            - name: Configure theme
+              ansible.builtin.lineinfile:
+                path: "{{ user_config_dir }}/bat/config"
+                search_string: "--theme="
+                line: '--theme="Catppuccin Mocha"'
+                create: true
+                owner: "{{ user }}"
+                group: "{{ user }}"
+                mode: u=rwx,g=rx,o=rx
+        - name: Catpuccin for atim/starship
+          ansible.builtin.copy:
+            src: starship/starship.toml
+            dest: "{{ user_config_dir }}/starship.toml"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: u=rwx,g=rx,o=rx
+  handlers:
+    - name: Build bat cache
+      ansible.builtin.command: bat cache --build
+      register: output
+      changed_when: output != 0
