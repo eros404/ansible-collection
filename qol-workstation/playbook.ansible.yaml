@@ -1,0 +1,42 @@
+---
+- name: Quality of Life (workstation)
+  hosts: all
+  become: true
+  vars:
+    user: "{{ ansible_env['SUDO_USER'] }}"
+    user_home: "{{ ansible_env['PWD'] }}"
+    user_zshrc: "{{ user_home }}/.zshrc"
+    user_config_dir: "{{ user_home }}/.config"
+  tasks:
+    - name: Install all packages
+      ansible.builtin.dnf5:
+        name: tilix
+        state: latest
+    - name: Install firacode fonts
+      notify: Refresh fonts
+      ansible.builtin.copy:
+        src: firacode
+        dest: /usr/local/share/fonts/
+        owner: root
+        role: root
+        mode: "0644"
+    - name: Copy tilix themes
+      ansible.builtin.copy:
+        src: tilix/schemes
+        dest: "{{ user_config_dir }}/tilix/schemes"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: u=rw,g=rw,o=r
+    - name: Copy Astronvim config
+      ansible.builtin.copy:
+        src: nvim
+        dest: "{{ user_config_dir }}/nvim"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: u=rw,g=rw,o=r
+        force: false
+  handlers:
+    - name: Refresh fonts
+      ansible.builtin.command: fc-cache -v
+      register: output
+      changed_when: output != 0

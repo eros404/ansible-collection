@@ -8,10 +8,7 @@
     user_zshrc: "{{ user_home }}/.zshrc"
     user_config_dir: "{{ user_home }}/.config"
   tasks:
-    - name: Debug
-      ansible.builtin.debug:
-        var: ansible_env["SUDO_USER"],ansible_env["PWD"]
-    - name: Enable Copr
+    - name: Enable starship repo
       community.general.copr:
         name: atim/starship
     - name: Install all packages
@@ -20,6 +17,14 @@
         state: latest
     - name: Customize zshrc
       block:
+        - name: Copy initial zshrc
+          ansible.builtin.copy:
+            src: zsh/dot_zshrc
+            dest: "{{ user_zshrc }}"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: u=rw,g=rw,o=r
+            force: false
         - name: Set nvim as editor
           ansible.builtin.lineinfile:
             path: "{{ user_zshrc }}"
