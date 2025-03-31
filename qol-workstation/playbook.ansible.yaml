@@ -14,19 +14,34 @@
         state: latest
     - name: Install firacode fonts
       notify: Refresh fonts
-      ansible.builtin.copy:
-        src: firacode
+      ansible.builtin.unarchive:
+        src: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/FiraCode.zip
         dest: /usr/local/share/fonts/
+        remote_src: true
         owner: root
         role: root
         mode: "0644"
-    - name: Copy tilix themes
-      ansible.builtin.copy:
-        src: tilix/schemes
-        dest: "{{ user_config_dir }}/tilix/schemes"
-        owner: "{{ user }}"
-        group: "{{ user }}"
-        mode: u=rw,g=rw,o=r
+    - name: Configure tilix
+      block:
+        - name: Create tilix theme directory
+          ansible.builtin.file:
+            state: directory
+            path: "{{ user_config_dir }}/tilix/schemes"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: u=rw,g=rx,o=r
+        - name: Copy tilix themes
+          ansible.builtin.get_url:
+            url: "https://raw.githubusercontent.com/catppuccin/tilix/refs/heads/main/themes/catppuccin-{{ item.theme }}.json"
+            dest: "{{ user_config_dir }}/tilix/schemes"
+            owner: "{{ user }}"
+            group: "{{ user }}"
+            mode: u=rw,g=rw,o=r
+          loop:
+            - { theme: "frappe" }
+            - { theme: "latte" }
+            - { theme: "macchiato" }
+            - { theme: "mocha" }
     - name: Copy Astronvim config
       ansible.builtin.copy:
         src: nvim
