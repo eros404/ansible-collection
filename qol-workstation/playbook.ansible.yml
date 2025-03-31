@@ -5,10 +5,16 @@
   vars_files:
     - "../common_vars.yml"
   tasks:
-    - name: Install all packages
+    - name: Install packages
       ansible.builtin.dnf5:
         name: tilix
         state: latest
+    - name: Install flatpacks
+      community.general.flatpak:
+        name:
+          - "com.mattjakeman.ExtensionManager"
+          - "org.filezillaproject.Filezilla"
+          - "com.discordapp.Discord"
     - name: Install firacode fonts
       notify: Refresh fonts
       ansible.builtin.unarchive:
