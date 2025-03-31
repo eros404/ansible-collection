@@ -2,11 +2,8 @@
 - name: Quality of Life (workstation)
   hosts: all
   become: true
-  vars:
-    user: "{{ ansible_env['SUDO_USER'] }}"
-    user_home: "{{ ansible_env['PWD'] }}"
-    user_zshrc: "{{ user_home }}/.zshrc"
-    user_config_dir: "{{ user_home }}/.config"
+  vars_files:
+    - "../common_vars.yml"
   tasks:
     - name: Install all packages
       ansible.builtin.dnf5:
@@ -36,7 +33,7 @@
             dest: "{{ user_config_dir }}/tilix/schemes"
             owner: "{{ user }}"
             group: "{{ user }}"
-            mode: u=rw,g=rw,o=r
+            mode: u=rw,g=r,o=r
           loop:
             - { theme: "frappe" }
             - { theme: "latte" }
@@ -48,10 +45,35 @@
         dest: "{{ user_config_dir }}/nvim"
         owner: "{{ user }}"
         group: "{{ user }}"
-        mode: u=rw,g=rw,o=r
+        mode: u=rw,g=r,o=r
         force: false
+    - name: Configure grub
+      block:
+        - name: Extract grub theme
+          ansible.builtin.unarchive:
+            src: "./catppuccin-mocha-grub-theme.zip"
+            dest: /usr/share/grub/themes/catppuccin-mocha
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
+        - name: Set grub theme
+          notify: Update grub
+          ansible.builtin.lineinfile:
+            path: /etc/default/grub
+            search_string: "GRUB_THEME"
+            line: 'GRUB_THEME="/usr/share/grub/themes/catppuccin-mocha/theme.txt"'
+        - name: Disable grub console output
+          notify: Update grub
+          ansible.builtin.lineinfile:
+            path: /etc/default/grub
+            line: '# GRUB_TERMINAL_OUTPUT="console"'
+            search_string: "GRUB_TERMINAL_OUTPUT"
   handlers:
     - name: Refresh fonts
       ansible.builtin.command: fc-cache -v
+      register: output
+      changed_when: output != 0
+    - name: Update grub
+      ansible.builtin.command: grub2-mkconfig -o /boot/grub2/grub.cfg
       register: output
       changed_when: output != 0

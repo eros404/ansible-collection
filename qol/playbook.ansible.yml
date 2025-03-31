@@ -2,11 +2,8 @@
 - name: Quality of Life
   hosts: all
   become: true
-  vars:
-    user: "{{ ansible_env['SUDO_USER'] }}"
-    user_home: "{{ ansible_env['PWD'] }}"
-    user_zshrc: "{{ user_home }}/.zshrc"
-    user_config_dir: "{{ user_home }}/.config"
+  vars_files:
+    - "../common_vars.yml"
   tasks:
     - name: Enable starship repo
       community.general.copr:
