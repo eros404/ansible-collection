@@ -1,5 +1,5 @@
 ---
 user: "{{ ansible_env['SUDO_USER'] }}"
-user_home: "{{ ansible_env['PWD'] }}"
+user_home: "/home/{{ user }}"
 user_zshrc: "{{ user_home }}/.zshrc"
 user_config_dir: "{{ user_home }}/.config"
